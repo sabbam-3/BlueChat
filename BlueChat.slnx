@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="BlueChat.AppHost/BlueChat.AppHost.csproj" Id="034414b9-d346-42b8-a3e7-251fbf515ce6" />
+  <Project Path="BlueChat.Core/BlueChat.Core.csproj" />
+  <Project Path="BlueChat.Mobile/BlueChat.Mobile.csproj">
+    <Deploy Solution="Debug|*" />
+  </Project>
+  <Project Path="BlueChat.ServiceDefaults/BlueChat.ServiceDefaults.csproj" />
+</Solution>
