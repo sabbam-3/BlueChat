@@ -32,7 +32,12 @@ internal class BluetoothConnection(
     {
         listener.Start();
 
-        await listener.AcceptBluetoothClientAsync();
+        while (IsConnected is false)
+        {
+            var internalClient = await listener.AcceptBluetoothClientAsync();
+
+            client = internalClient;
+        }
     }
 
     public async Task ConnectAsync(string address, Guid serviceId)

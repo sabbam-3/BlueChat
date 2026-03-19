@@ -12,6 +12,10 @@
     @(isScanning ? "Scanning..." : "Scan for Devices")
 </button>
 
+<button class="btn btn-secondary ml-2" @onclick="StartHostAsync">
+    Start Listening for Connections
+</button>
+
 @if (devices.Any())
 {
     <h4>Discovered Devices:</h4>
@@ -91,6 +95,22 @@
         {
             isScanning = false;
             StateHasChanged();
+        }
+    }
+
+    private async Task StartHostAsync()
+    {
+        errorMessage = string.Empty;
+        try
+        {
+            await Task.Run(async () => 
+            {
+                await bluetoothConnection.StartHostAsync();
+            });
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to start listening. {ex.Message}";
         }
     }
 
