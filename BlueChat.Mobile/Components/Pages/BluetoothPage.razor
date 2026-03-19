@@ -79,12 +79,9 @@
 
         try
         {
-            await Task.Run(async () =>
-            {
-                var discoveredDevices = await bluetoothConnection.DiscoverDevicesAsync();
+            var discoveredDevices = await bluetoothConnection.DiscoverDevicesAsync();
 
-                devices = discoveredDevices.Select(d => $"{d.DeviceName} ({d.DeviceAddress})").ToList();
-            });
+            devices = discoveredDevices.Select(d => $"{d.DeviceName} ({d.DeviceAddress})").ToList();
         }
         catch(Exception ex)
         {
@@ -103,10 +100,7 @@
         errorMessage = string.Empty;
         try
         {
-            await Task.Run(async () => 
-            {
-                await bluetoothConnection.StartHostAsync();
-            });
+            await bluetoothConnection.StartHostAsync();
         }
         catch (Exception ex)
         {
@@ -162,10 +156,7 @@
         }
         try
         {
-            await Task.Run(async () =>
-            {
-                await bluetoothConnection.SendAsync(messageToSend);
-            });
+            await bluetoothConnection.SendAsync(messageToSend);
 
             messageToSend = string.Empty;
         }
