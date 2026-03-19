@@ -1,0 +1,214 @@
+﻿@page "/connection"
+@using BlueChat.Core.Abstractions
+@using BlueChat.Core.Messaging
+@using BlueChat.Core.Models
+@inject NavigationManager Navigation
+@inject IBluetoothService bluetoothService
+@implements IDisposable
+
+<div class="cn-page">
+    <div class="cn-card">
+        <!-- Header -->
+        <div class="cn-header">
+            <div class="cn-logo">
+                <div class="cn-logo-ring"></div>
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <path d="M6.5 6.5l11 11L12 23V1l5.5 5.5-11 11" />
+                </svg>
+            </div>
+            <h1 class="cn-title">BlueChat</h1>
+            <p class="cn-subtitle">Connect with nearby devices</p>
+        </div>
+
+        <!-- Status Pill -->
+        <div class="cn-status @(bluetoothService.ConnectionState == ConnectionState.Connected ? "cn-status--connected" : "")">
+            <span class="cn-status-dot"></span>
+            <span>@connectionStatus</span>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="cn-actions">
+            <button class="cn-btn cn-btn--scan" @onclick="ScanAsync" disabled="@isScanning">
+                <div class="cn-btn-icon">
+                    @if (isScanning)
+                    {
+                        <div class="cn-spinner"></div>
+                    }
+                    else
+                    {
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8" />
+                            <path d="m21 21-4.35-4.35" />
+                        </svg>
+                    }
+                </div>
+                <div class="cn-btn-text">
+                    <span class="cn-btn-label">@(isScanning ? "Scanning..." : "Scan for Devices")</span>
+                    <span class="cn-btn-hint">Find nearby Bluetooth devices</span>
+                </div>
+                <svg class="cn-btn-arrow" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="m9 18 6-6-6-6" />
+                </svg>
+            </button>
+
+            <button class="cn-btn cn-btn--host" @onclick="StartHostingAsync" disabled="@isHosting">
+                <div class="cn-btn-icon">
+                    @if (isHosting)
+                    {
+                        <div class="cn-pulse"></div>
+                    }
+                    else
+                    {
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" />
+                        </svg>
+                    }
+                </div>
+                <div class="cn-btn-text">
+                    <span class="cn-btn-label">@(isHosting ? "Hosting..." : "Start Hosting")</span>
+                    <span class="cn-btn-hint">@hostingStatus</span>
+                </div>
+                <svg class="cn-btn-arrow" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="m9 18 6-6-6-6" />
+                </svg>
+            </button>
+        </div>
+
+        <!-- Devices List -->
+        @if (devices.Any())
+        {
+            <div class="cn-section">
+                <div class="cn-section-header">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+                        <path d="M12 18h.01" />
+                    </svg>
+                    <span>Discovered Devices (@devices.Count)</span>
+                </div>
+                <div class="cn-devices">
+                    @foreach (var device in devices)
+                    {
+                        var deviceName = device.Name;
+                        var deviceAddress = device.Address;
+
+                        <div class="cn-device">
+                            <div class="cn-device-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M6.5 6.5l11 11L12 23V1l5.5 5.5-11 11" />
+                                </svg>
+                            </div>
+                            <div class="cn-device-info">
+                                <span class="cn-device-name">@deviceName</span>
+                                <span class="cn-device-addr">@deviceAddress</span>
+                            </div>
+                            <button class="cn-device-connect" @onclick="() => ConnectAsync(deviceAddress)">
+                                Connect
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+
+        <!-- Error -->
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="cn-error">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 8v4m0 4h.01" />
+                </svg>
+                <span class="cn-error-text">@errorMessage</span>
+                <button class="cn-error-dismiss" @onclick="() => errorMessage = string.Empty">×</button>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private string connectionStatus = "Disconnected";
+    private string hostingStatus = "Allow others to connect to you";
+    private bool isScanning = false;
+    private bool isHosting = false;
+    private List<BluetoothDevice> devices = new();
+    private string errorMessage = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        bluetoothService.OnConnectionChanged += OnConnectionChanged;
+    }
+
+    private void OnConnectionChanged(ConnectionState connectionState)
+    {
+        if (connectionState == ConnectionState.Connected)
+        {
+            InvokeAsync(() =>
+            {
+                Navigation.NavigateTo("/chat");
+            });
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task ScanAsync()
+    {
+        isScanning = true;
+        errorMessage = string.Empty;
+        devices.Clear();
+
+        try
+        {
+            devices = await bluetoothService.ScanForDevicesAsync();
+            connectionStatus = $"Found {devices.Count} device(s)";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isScanning = false;
+        }
+    }
+
+    private async Task StartHostingAsync()
+    {
+        isHosting = true;
+        errorMessage = string.Empty;
+        hostingStatus = "Waiting for connections...";
+
+        try
+        {
+            await bluetoothService.StartHostAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+            hostingStatus = "Hosting failed";
+            isHosting = false;
+        }
+    }
+
+    private async Task ConnectAsync(string address)
+    {
+        connectionStatus = "Connecting...";
+        errorMessage = string.Empty;
+
+        try
+        {
+            await bluetoothService.ConnectAsync(address);
+            // Navigation will happen via OnConnectionChanged
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+            connectionStatus = "Connection failed";
+        }
+    }
+
+    public void Dispose()
+    {
+        bluetoothService.OnConnectionChanged -= OnConnectionChanged;
+    }
+}

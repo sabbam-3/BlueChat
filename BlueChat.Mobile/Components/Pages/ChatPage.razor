@@ -1,0 +1,194 @@
+﻿@page "/chat"
+@using BlueChat.Core.Abstractions
+@using BlueChat.Core.Messaging
+@using BlueChat.Core.Models
+@inject NavigationManager Navigation
+@inject IBluetoothService bluetoothService
+@implements IDisposable
+
+<div class="chat-container">
+    <!-- Chat Header -->
+    <div class="chat-header">
+        <button class="btn-back" @onclick="GoBack">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+        </button>
+        <div class="chat-header-info">
+            <div class="chat-avatar">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M6.5 6.5l11 11L12 23V1l5.5 5.5-11 11" />
+                </svg>
+            </div>
+            <div class="chat-details">
+                <span class="chat-name">@connectedDeviceName</span>
+                <span class="chat-status">
+                    <span class="status-dot connected"></span>
+                    Connected
+                </span>
+            </div>
+        </div>
+        <button class="btn-disconnect" @onclick="DisconnectAsync">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18.36 6.64A9 9 0 0 1 20.77 15M6.16 6.16a9 9 0 1 0 12.68 12.68" />
+                <path d="M12 2v4M2 12h4" />
+                <path d="m2 2 20 20" />
+            </svg>
+        </button>
+    </div>
+
+    <!-- Chat Messages -->
+    <div class="chat-messages" @ref="messagesContainer">
+        @if (!messages.Any())
+        {
+            <div class="empty-chat">
+                <div class="empty-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                    </svg>
+                </div>
+                <p>No messages yet</p>
+                <span>Send a message to start the conversation</span>
+            </div>
+        }
+        else
+        {
+            @foreach (var message in messages)
+            {
+                <div class="message @(message.IsSent ? "sent" : "received")">
+                    <div class="message-bubble">
+                        <p class="message-text">@message.Content</p>
+                        <span class="message-time">@message.Timestamp.ToString("HH:mm")</span>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+
+    <!-- Chat Input -->
+    <div class="chat-input-container">
+        <div class="chat-input-wrapper">
+            <input @bind="messageToSend"
+                   @bind:event="oninput"
+                   @onkeypress="HandleKeyPress"
+                   placeholder="Type a message..."
+                   class="chat-input" />
+            <button class="btn-send"
+                    @onclick="SendMessageAsync"
+                    disabled="@string.IsNullOrWhiteSpace(messageToSend)">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="m22 2-7 20-4-9-9-4 20-7z" />
+                    <path d="M22 2 11 13" />
+                </svg>
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string messageToSend = string.Empty;
+    private string connectedDeviceName = "Bluetooth Device";
+    private List<ChatMessage> messages = new();
+    private ElementReference messagesContainer;
+
+    protected override void OnInitialized()
+    {
+        if (bluetoothService.ConnectionState != ConnectionState.Connected 
+            && bluetoothService.ConnectionState != ConnectionState.Connecting)
+        {
+            Navigation.NavigateTo("/connection");
+            return;
+        }
+
+        bluetoothService.OnMessageReceived += OnMessageReceived;
+        bluetoothService.OnConnectionChanged += OnConnectionChanged;
+
+        _ = bluetoothService.StartListeningAsync(CancellationToken.None);
+    }
+
+    private void OnMessageReceived(BluetoothMessage message)
+    {
+        messages.Add(new ChatMessage
+        {
+            Content = message.Payload,
+            IsSent = false,
+            Timestamp = message.Timestamp
+        });
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnConnectionChanged(ConnectionState connectionState)
+    {
+        if (connectionState != ConnectionState.Connected)
+        {
+            InvokeAsync(() => Navigation.NavigateTo("/connection"));
+        }
+    }
+
+    private async Task HandleKeyPress(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(messageToSend))
+        {
+            await SendMessageAsync();
+        }
+    }
+
+    private async Task SendMessageAsync()
+    {
+        if (string.IsNullOrWhiteSpace(messageToSend)) return;
+
+        var message = messageToSend;
+        messageToSend = string.Empty;
+
+        messages.Add(new ChatMessage
+        {
+            Content = message,
+            IsSent = true,
+            Timestamp = DateTime.Now
+        });
+
+        try
+        {
+            await bluetoothService.SendAsync(message);
+        }
+        catch (Exception ex)
+        {
+            messages.Add(new ChatMessage
+            {
+                Content = $"Failed to send: {ex.Message}",
+                IsSent = true,
+                Timestamp = DateTime.Now,
+                IsError = true
+            });
+        }
+    }
+
+    private async Task DisconnectAsync()
+    {
+        await Task.Run(() => 
+        {
+            bluetoothService.DisconnectAsync();
+        });
+
+        Navigation.NavigateTo("/connection");
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/connection");
+    }
+
+    public void Dispose()
+    {
+        bluetoothService.OnMessageReceived -= OnMessageReceived;
+        bluetoothService.OnConnectionChanged -= OnConnectionChanged;
+    }
+
+    private class ChatMessage
+    {
+        public string Content { get; set; } = string.Empty;
+        public bool IsSent { get; set; }
+        public DateTime Timestamp { get; set; }
+        public bool IsError { get; set; }
+    }
+}

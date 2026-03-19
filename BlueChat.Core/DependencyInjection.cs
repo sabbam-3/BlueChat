@@ -10,7 +10,6 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddCoreServices(this IServiceCollection services)
     {
-        services.AddSingleton<IBluetoothConnection, BluetoothConnection>();
         services.AddSingleton<BluetoothClient>();
 
         services.AddSingleton(s =>
@@ -18,7 +17,7 @@ public static class DependencyInjection
             return new BluetoothListener(ServiceConstants.ServiceId);
         });
 
-        services.AddSingleton<IBluetoothConnection, BluetoothConnection>();
+        services.AddSingleton<IBluetoothService, BluetoothService>();
 
         return services;
     }
