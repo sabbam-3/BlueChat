@@ -8,7 +8,7 @@ namespace BlueChat.Core.Services;
 
 internal class BluetoothConnection(
     BluetoothClient client,
-    BluetoothListener listener) : IBluetoothConnection
+    BluetoothListener listener) : IBluetoothConnection, IDisposable
 {
     private Stream? _stream;
     private CancellationTokenSource? _receiveCts;
@@ -16,6 +16,7 @@ internal class BluetoothConnection(
     public event EventHandler<ConnectionStateEventArgs>? ConnectionStateChanged;
     public event EventHandler<DataReceivedEventArgs>? DataReceived;
     public event EventHandler<BluetoothErrorEventArgs>? ErrorOccurred;
+    public event EventHandler<HostingStateEventArgs> HostingStateChanged;
 
     public ConnectionState State { get; private set; } = ConnectionState.Disconnected;
     public bool IsConnected => client.Connected;
@@ -23,6 +24,8 @@ internal class BluetoothConnection(
 
     public async Task<BluetoothDeviceInfo[]> DiscoverDevicesAsync()
     {
+        _ = StartHostAsync();
+
         var devices = await client.DiscoverDevicesAsync().ToArrayAsync();
 
         return devices;
@@ -32,13 +35,26 @@ internal class BluetoothConnection(
     {
         listener.Start();
 
-        var internalClient = await listener.AcceptBluetoothClientAsync();
+        var task = listener.AcceptBluetoothClientAsync();
 
-        client = internalClient;
+        SetState(HostingState.HostingStarted, "Waiting for incoming connections...");
 
-        _stream = client.GetStream();
+        if(await Task.WhenAny(task, Task.Delay(TimeSpan.FromSeconds(60))) == task)
+        {
+            client = await task;
 
-        SetState(ConnectionState.Connected, "Connected");
+            _stream = client.GetStream();
+
+            SetState(HostingState.HostingCompleted, "Hosting completed, client connected");
+            SetState(ConnectionState.Connected, "Connected");
+        }
+        else
+        {
+            listener.Stop();
+            RaiseError("No incoming connection within timeout");
+            SetState(HostingState.HostingStopped, "Hosting stopped due to timeout");
+            return;
+        }
     }
 
     public async Task ConnectAsync(string address, Guid serviceId)
@@ -98,7 +114,6 @@ internal class BluetoothConnection(
             }
             catch (OperationCanceledException)
             {
-                // Listening was cancelled, exit the loop
                 break;
             }
             catch (Exception ex)
@@ -119,9 +134,6 @@ internal class BluetoothConnection(
 
         await _stream.WriteAsync(Encoding.UTF8.GetBytes(message));
         await _stream.FlushAsync();
-        //I should raise an event here to notify that the message was sent
-        //I should have listener which always listens for incoming messages and raises DataReceived event when a message is received
-
         return true;
     }
 
@@ -146,6 +158,15 @@ internal class BluetoothConnection(
     {
         State = state;
         ConnectionStateChanged?.Invoke(this, new ConnectionStateEventArgs
+        {
+            State = state,
+            Message = message
+        });
+    }
+
+    private void SetState(HostingState state, string? message = null)
+    {
+        HostingStateChanged?.Invoke(this, new HostingStateEventArgs
         {
             State = state,
             Message = message

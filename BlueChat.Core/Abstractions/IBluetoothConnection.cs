@@ -8,6 +8,8 @@ public interface IBluetoothConnection
     event EventHandler<ConnectionStateEventArgs> ConnectionStateChanged;
     event EventHandler<DataReceivedEventArgs> DataReceived;
     event EventHandler<BluetoothErrorEventArgs> ErrorOccurred;
+    event EventHandler<HostingStateEventArgs> HostingStateChanged;
+
     ConnectionState State { get; }
     bool IsConnected { get; }
 

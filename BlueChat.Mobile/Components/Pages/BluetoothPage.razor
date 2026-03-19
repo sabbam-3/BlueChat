@@ -7,13 +7,13 @@
 @page "/bluetooth"
 
 <p>Status: <strong>@connectionStatus</strong></p>
+<p>Status: <strong>@hostingStatus</strong></p>
 
 <button class="btn btn-primary" @onclick="ScanAsync" disabled="@isScanning">
     @(isScanning ? "Scanning..." : "Scan for Devices")
 </button>
-
-<button class="btn btn-secondary ml-2" @onclick="StartHostAsync">
-    Start Listening for Connections
+<button class="btn btn-primary" @onclick="StartHostingAsync">
+    @("Start Hosting")
 </button>
 
 @if (devices.Any())
@@ -61,12 +61,14 @@
     private string messageToSend = string.Empty;
     private string errorMessage = string.Empty;
     private bool isScanning = false;
+    private string hostingStatus = "Not Hosting";
 
     protected override void OnInitialized()
     {
         bluetoothConnection.ConnectionStateChanged += OnConnectionStateChanged;
         bluetoothConnection.DataReceived += OnDataReceived;
         bluetoothConnection.ErrorOccurred += OnErrorOccurred;
+        bluetoothConnection.HostingStateChanged += OnHostingStateChanged;
         base.OnInitialized();
     }
 
@@ -94,23 +96,6 @@
         }
     }
 
-    private async Task StartHostAsync()
-    {
-        errorMessage = string.Empty;
-        try
-        {
-            await bluetoothConnection.StartHostAsync();
-
-            connectionStatus = "Connected";
-
-            await StartListeningAsync();
-        }
-        catch (Exception ex)
-        {
-            errorMessage = $"Failed to start listening. {ex.Message}";
-        }
-    }
-
     private async Task ConnectAsync(string address)
     {
         errorMessage = string.Empty;
@@ -119,7 +104,7 @@
         {
             await bluetoothConnection.ConnectAsync(address, ServiceConstants.ServiceId);
             connectionStatus = "Connected";
-
+            
             await StartListeningAsync();
         }
         catch (Exception ex)
@@ -129,7 +114,7 @@
         }
         finally
         {
-            StateHasChanged(); // ✅ now safe
+            StateHasChanged();
         }
     }
 
@@ -173,15 +158,11 @@
 
     private async Task StartListeningAsync()
     {
-        while (true)
-        {
-            await bluetoothConnection.StartListeningAsync();
-        }
+        await bluetoothConnection.StartListeningAsync();
     }
 
     private async void OnConnectionStateChanged(object sender, ConnectionStateEventArgs e)
     {
-        // InvokeAsync because event comes from background thread
         await InvokeAsync(() =>
         {
             connectionStatus = e.State switch
@@ -190,6 +171,21 @@
                 ConnectionState.Connected => "✅ Connected",
                 ConnectionState.Disconnecting => "⏳ Disconnecting...",
                 ConnectionState.Disconnected => "❌ Disconnected",
+                _ => "Unknown"
+            };
+            StateHasChanged();
+        });
+    }
+
+    private async void OnHostingStateChanged(object sender, HostingStateEventArgs e)
+    {
+        await InvokeAsync(() =>
+        {
+            hostingStatus = e.State switch
+            {
+                HostingState.HostingStarted => "Hosting...",
+                HostingState.HostingStopped => "Not Hosting",
+                HostingState.HostingCompleted => "Hosting Completed",
                 _ => "Unknown"
             };
             StateHasChanged();
@@ -214,11 +210,30 @@
         });
     }
 
+    private async Task StartHostingAsync()
+    {
+        errorMessage = string.Empty;
+        try
+        {
+            _ = bluetoothConnection.StartHostAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to start hosting. {ex.Message}";
+            hostingStatus = "Not Hosting";
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
+
     public void Dispose()
     {
-        // Always unsubscribe!
         bluetoothConnection.ConnectionStateChanged -= OnConnectionStateChanged;
         bluetoothConnection.DataReceived -= OnDataReceived;
         bluetoothConnection.ErrorOccurred -= OnErrorOccurred;
+        bluetoothConnection.HostingStateChanged -= OnHostingStateChanged;
     }
 }
