@@ -104,8 +104,6 @@
         {
             await bluetoothConnection.ConnectAsync(address, ServiceConstants.ServiceId);
             connectionStatus = "Connected";
-            
-            await StartListeningAsync();
         }
         catch (Exception ex)
         {
@@ -173,6 +171,12 @@
                 ConnectionState.Disconnected => "❌ Disconnected",
                 _ => "Unknown"
             };
+
+            if(e.State == ConnectionState.Connected)
+            {
+                _ = StartListeningAsync();
+            }
+
             StateHasChanged();
         });
     }
