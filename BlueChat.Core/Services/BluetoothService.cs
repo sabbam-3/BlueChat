@@ -1,7 +1,6 @@
 ﻿using System.Text;
 using BlueChat.Core.Abstractions;
 using BlueChat.Core.Constants;
-using BlueChat.Core.Messaging;
 using BlueChat.Core.Models;
 using InTheHand.Net;
 using InTheHand.Net.Bluetooth;

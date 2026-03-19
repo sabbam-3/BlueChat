@@ -1,4 +1,4 @@
-﻿namespace BlueChat.Core.Messaging;
+﻿namespace BlueChat.Core.Constants;
 
 public enum ConnectionState
 {

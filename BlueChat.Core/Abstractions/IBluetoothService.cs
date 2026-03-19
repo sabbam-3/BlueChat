@@ -1,4 +1,4 @@
-﻿using BlueChat.Core.Messaging;
+﻿using BlueChat.Core.Constants;
 using BlueChat.Core.Models;
 
 namespace BlueChat.Core.Abstractions;
