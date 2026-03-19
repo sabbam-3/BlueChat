@@ -148,7 +148,7 @@ internal class BluetoothConnection(
 
         _receiveCts?.Cancel();
 
-        _stream?.Close();
+        //_stream?.Close();
         client.Close();
 
         SetState(ConnectionState.Disconnected, "Disconnected");
