@@ -117,23 +117,21 @@
     private async Task ConnectAsync(string address)
     {
         errorMessage = string.Empty;
-        await Task.Run(async () =>
+
+        try
         {
-            try
-            {
-                await bluetoothConnection.ConnectAsync(address, ServiceConstants.ServiceId);
-                connectionStatus = "Connected";
-            }
-            catch (Exception ex)
-            {
-                errorMessage = $"Failed to connect. {ex.Message}";
-                connectionStatus = "Disconnected";
-            }
-            finally
-            {
-                StateHasChanged();
-            }
-        });
+            await bluetoothConnection.ConnectAsync(address, ServiceConstants.ServiceId);
+            connectionStatus = "Connected";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to connect. {ex.Message}";
+            connectionStatus = "Disconnected";
+        }
+        finally
+        {
+            StateHasChanged(); // ✅ now safe
+        }
     }
 
     private async Task DisconnectAsync()
