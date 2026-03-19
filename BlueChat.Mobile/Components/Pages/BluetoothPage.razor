@@ -86,7 +86,6 @@
         catch(Exception ex)
         {
             errorMessage = $"Failed to scan for devices. {ex.Message}";
-
         }
         finally
         {
@@ -101,6 +100,10 @@
         try
         {
             await bluetoothConnection.StartHostAsync();
+
+            connectionStatus = "Connected";
+
+            await StartListeningAsync();
         }
         catch (Exception ex)
         {
@@ -116,6 +119,8 @@
         {
             await bluetoothConnection.ConnectAsync(address, ServiceConstants.ServiceId);
             connectionStatus = "Connected";
+
+            await StartListeningAsync();
         }
         catch (Exception ex)
         {
@@ -163,6 +168,14 @@
         catch (Exception ex)
         {
             errorMessage = $"Failed to send message. {ex.Message}";
+        }
+    }
+
+    private async Task StartListeningAsync()
+    {
+        while (true)
+        {
+            await bluetoothConnection.StartListeningAsync();
         }
     }
 

@@ -32,12 +32,13 @@ internal class BluetoothConnection(
     {
         listener.Start();
 
-        while (IsConnected is false)
-        {
-            var internalClient = await listener.AcceptBluetoothClientAsync();
+        var internalClient = await listener.AcceptBluetoothClientAsync();
 
-            client = internalClient;
-        }
+        client = internalClient;
+
+        _stream = client.GetStream();
+
+        SetState(ConnectionState.Connected, "Connected");
     }
 
     public async Task ConnectAsync(string address, Guid serviceId)
@@ -76,6 +77,7 @@ internal class BluetoothConnection(
             RaiseError("Not connected");
             return;
         }
+
         _receiveCts = new CancellationTokenSource();
 
         byte[] buffer = new byte[1024];
