@@ -126,7 +126,7 @@
 </div>
 
 @code {
-    private string connectionStatus = "Disconnected";
+    private string connectionStatus = string.Empty;
     private string hostingStatus = "Allow others to connect to you";
     private bool isScanning = false;
     private bool isHosting = false;
@@ -135,11 +135,14 @@
 
     protected override void OnInitialized()
     {
+        connectionStatus = bluetoothService.ConnectionState.ToString();
         bluetoothService.OnConnectionChanged += OnConnectionChanged;
     }
 
     private void OnConnectionChanged(ConnectionState connectionState)
     {
+        connectionStatus = connectionState.ToString();
+
         if (connectionState == ConnectionState.Connected)
         {
             InvokeAsync(() =>
@@ -192,18 +195,15 @@
 
     private async Task ConnectAsync(string address)
     {
-        connectionStatus = "Connecting...";
         errorMessage = string.Empty;
 
         try
         {
             await bluetoothService.ConnectAsync(address);
-            // Navigation will happen via OnConnectionChanged
         }
         catch (Exception ex)
         {
             errorMessage = ex.Message;
-            connectionStatus = "Connection failed";
         }
     }
 

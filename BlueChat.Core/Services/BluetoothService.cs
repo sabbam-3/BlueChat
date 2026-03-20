@@ -139,6 +139,11 @@ internal class BluetoothService(
         SetState(ConnectionState.Connected);
     }
 
+    public string GetRemoteDeviceName()
+    {
+        return client.RemoteMachineName;
+    }
+
     private void SetState(ConnectionState state)
     {
         ConnectionState = state;

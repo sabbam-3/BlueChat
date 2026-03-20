@@ -104,6 +104,8 @@
         bluetoothService.OnConnectionChanged += OnConnectionChanged;
 
         _ = bluetoothService.StartListeningAsync(CancellationToken.None);
+
+        connectedDeviceName = bluetoothService.GetRemoteDeviceName();
     }
 
     private void OnMessageReceived(BluetoothMessage message)
