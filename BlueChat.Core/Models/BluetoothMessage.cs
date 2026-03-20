@@ -15,18 +15,42 @@ public class BluetoothMessage
         return $"{SenderDeviceName}|{SenderAddress}|{Payload}|{Timestamp:o}";
     }
 
+    // Maximum allowed length of a serialized message string (64 KB).
+    private const int MaxSerializedLength = 65_536;
+
     public static BluetoothMessage Deserialize(string line)
     {
-        var parts = line.Split('|');
+        ArgumentNullException.ThrowIfNull(line);
+
+        if (line.Length > MaxSerializedLength)
+        {
+            throw new FormatException($"Message exceeds maximum allowed length of {MaxSerializedLength} characters.");
+        }
+
+        // Split with a limit to prevent excessive allocations from malformed input
+        var parts = line.Split('|', 5);
         if (parts.Length != 4)
-            throw new FormatException("Invalid message format");
+        {
+            throw new FormatException("Invalid message format: expected exactly 4 pipe-delimited fields.");
+        }
+
+        if (string.IsNullOrWhiteSpace(parts[0]) || string.IsNullOrWhiteSpace(parts[1]))
+        {
+            throw new FormatException("SenderDeviceName and SenderAddress must not be empty.");
+        }
+
+        if (!DateTime.TryParse(parts[3], System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.RoundtripKind, out var timestamp))
+        {
+            throw new FormatException("Invalid timestamp format.");
+        }
 
         return new BluetoothMessage
         {
-            SenderDeviceName = parts[0],
-            SenderAddress = parts[1],
+            SenderDeviceName = parts[0].Trim(),
+            SenderAddress = parts[1].Trim(),
             Payload = parts[2],
-            Timestamp = DateTime.Parse(parts[3])
+            Timestamp = timestamp
         };
     }
 

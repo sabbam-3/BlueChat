@@ -3,7 +3,7 @@ using BlueChat.Core.Models;
 
 namespace BlueChat.Core.Abstractions;
 
-public interface IBluetoothService
+public interface IBluetoothService : IDisposable
 {
     ConnectionState ConnectionState { get; }
 
