@@ -13,7 +13,7 @@ namespace BlueChat.Core.Services;
 internal class BluetoothService(
     BluetoothClient client,
     BluetoothListener listener,
-    byte[] encryptionKey) : IBluetoothService
+    EncryptionKey encryptionKey) : IBluetoothService
 {
     private const int MaxMessageSize = 256 * 1024;
 
@@ -117,7 +117,7 @@ internal class BluetoothService(
                 break;
 
             // 4. Decrypt
-            byte[] decryptedBytes = EncryptedStreamHelper.Decrypt(encryptedPayload, encryptionKey);
+            byte[] decryptedBytes = EncryptedStreamHelper.Decrypt(encryptedPayload, encryptionKey.Value);
             string dataAsString = Encoding.UTF8.GetString(decryptedBytes);
 
             // 5. Deserialize (now hardened with validation)
@@ -141,7 +141,7 @@ internal class BluetoothService(
         byte[] plainBytes = Encoding.UTF8.GetBytes(serialized);
 
         // 1. Encrypt
-        byte[] encrypted = EncryptedStreamHelper.Encrypt(plainBytes, encryptionKey);
+        byte[] encrypted = EncryptedStreamHelper.Encrypt(plainBytes, encryptionKey.Value);
 
         // 2. Validate outgoing size
         if (encrypted.Length > MaxMessageSize)

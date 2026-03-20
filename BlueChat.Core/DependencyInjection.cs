@@ -1,4 +1,6 @@
-﻿using BlueChat.Core.Abstractions;
+﻿using System.Security.Cryptography;
+using System.Text;
+using BlueChat.Core.Abstractions;
 using BlueChat.Core.Constants;
 using BlueChat.Core.Security;
 using BlueChat.Core.Services;
@@ -19,10 +21,16 @@ public static class DependencyInjection
             return new BluetoothListener(ServiceConstants.ServiceId);
         });
 
-        // Use the provided key or generate a new one
-        byte[] key = EncryptedStreamHelper.GenerateKey();
+        services.AddSingleton(sp =>
+        {
+            //ToDo: use a more secure way to generate and store the encryption key
+            string text = "my-secret-key";
 
-        services.AddSingleton(key);
+            using var sha256 = SHA256.Create();
+            var key = sha256.ComputeHash(Encoding.UTF8.GetBytes(text));
+
+            return new EncryptionKey(key);
+        });
 
         services.AddSingleton<IBluetoothService, BluetoothService>();
 
