@@ -139,11 +139,6 @@ internal class BluetoothService(
         SetState(ConnectionState.Connected);
     }
 
-    public string GetRemoteDeviceName()
-    {
-        return client.PairedDevices.First().DeviceName;
-    }
-
     private void SetState(ConnectionState state)
     {
         ConnectionState = state;

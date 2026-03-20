@@ -14,7 +14,6 @@ public interface IBluetoothService
     event Action<HostingState>? OnHostingStateChanged;
 
     Task<List<BluetoothDevice>> ScanForDevicesAsync();
-    string GetRemoteDeviceName();
 
     Task StartHostAsync();
     
